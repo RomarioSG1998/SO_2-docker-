@@ -58,7 +58,7 @@ EOF
   info ".env padrao criado com sucesso."
 }
 
-configure_mongo_image_for_cpu() {
+configure_compatibility_for_cpu() {
   local cpuinfo_file="/proc/cpuinfo"
   [[ -r "$cpuinfo_file" ]] || return 0
 
@@ -66,8 +66,9 @@ configure_mongo_image_for_cpu() {
     return 0
   fi
 
-  warn "CPU sem suporte AVX detectada. Ajustando Mongo para imagem compativel (mongo:4.4.29)."
+  warn "CPU sem suporte AVX detectada. Ajustando stack para imagens compativeis."
   upsert_env_var "MONGO_IMAGE" "mongo:4.4.29"
+  upsert_env_var "ROCKETCHAT_IMAGE" "rocketchat/rocket.chat:5.4.3"
 }
 
 ensure_keyfile_exists() {
@@ -188,7 +189,7 @@ main() {
   [[ -f "$COMPOSE_FILE" ]] || error "Arquivo nao encontrado: $COMPOSE_FILE"
 
   ensure_env_file
-  configure_mongo_image_for_cpu
+  configure_compatibility_for_cpu
   ensure_keyfile_exists
   ensure_keyfile_permissions
   ensure_hosts_mapping

@@ -16,7 +16,7 @@ services:
       retries: 12
       start_period: 20s
   rocketchat:
-    image: rocketchat/rocket.chat:6.9.0
+    image: ${ROCKETCHAT_IMAGE:-rocketchat/rocket.chat:6.9.0}
     restart: always
     depends_on:
       mongo:

@@ -90,9 +90,10 @@
 - Causa:
   - A imagem `mongo:7` exige AVX e nao roda em CPUs antigas sem essa instrucao.
 - Solucao aplicada:
-  - O `compose.yml` passou a aceitar `MONGO_IMAGE` por variavel de ambiente.
+  - O `compose.yml` passou a aceitar `MONGO_IMAGE` e `ROCKETCHAT_IMAGE` por variaveis de ambiente.
   - O `ativar_servidores.sh` detecta CPU sem AVX e ajusta automaticamente:
     - `MONGO_IMAGE=mongo:4.4.29`
+    - `ROCKETCHAT_IMAGE=rocketchat/rocket.chat:5.4.3`
   - Healthcheck do Mongo ficou compativel com `mongosh` (Mongo 7) e `mongo` (Mongo 4.4).
 
 ## Validacao final
