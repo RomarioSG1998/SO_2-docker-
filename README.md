@@ -156,6 +156,8 @@ O script ja cobre os pontos que mais quebram em primeira execucao:
 - Cria `.env` automaticamente quando ele nao existe.
 - Reaplica permissao `400` no `mongo-keyfile`.
 - Garante `127.0.0.1 rocket.chat` no `/etc/hosts`.
+- Se o usuario nao tiver permissao no Docker, tenta `sudo docker` automaticamente.
+- Inicializa o replica set `rs0` antes de subir o Rocket.Chat.
 - Sobe os servicos e aguarda todos ficarem `healthy`.
 
 ---

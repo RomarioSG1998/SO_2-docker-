@@ -6,6 +6,7 @@ COMPOSE_FILE="$PROJECT_DIR/compose.yml"
 ENV_FILE="$PROJECT_DIR/.env"
 ENV_EXAMPLE_FILE="$PROJECT_DIR/.env.example"
 DOMAIN="rocket.chat"
+DOCKER_CMD=("docker")
 
 info() {
   echo "[INFO] $*"
@@ -22,6 +23,40 @@ error() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || error "Comando obrigatorio nao encontrado: $1"
+}
+
+setup_docker_access() {
+  require_cmd docker
+
+  if docker info >/dev/null 2>&1; then
+    DOCKER_CMD=("docker")
+    return
+  fi
+
+  if command -v sudo >/dev/null 2>&1; then
+    if sudo -n docker info >/dev/null 2>&1; then
+      info "Docker sem permissao direta. Usando sudo automaticamente."
+      DOCKER_CMD=("sudo" "docker")
+      return
+    fi
+
+    info "Docker requer privilegio. Solicitando autenticacao sudo..."
+    sudo -v || error "Nao foi possivel autenticar com sudo para acessar o Docker."
+    sudo docker info >/dev/null 2>&1 || error "Docker nao acessivel nem com sudo."
+    info "Usando sudo automaticamente para comandos Docker."
+    DOCKER_CMD=("sudo" "docker")
+    return
+  fi
+
+  error "Sem acesso ao Docker. Adicione seu usuario ao grupo docker ou instale sudo."
+}
+
+docker_compose() {
+  "${DOCKER_CMD[@]}" compose -f "$COMPOSE_FILE" "$@"
+}
+
+docker_inspect() {
+  "${DOCKER_CMD[@]}" inspect "$@"
 }
 
 upsert_env_var() {
@@ -140,12 +175,12 @@ ensure_hosts_mapping() {
 container_health() {
   local service="$1"
   local cid
-  cid="$(docker compose -f "$COMPOSE_FILE" ps -q "$service" 2>/dev/null || true)"
+  cid="$(docker_compose ps -q "$service" 2>/dev/null || true)"
   if [[ -z "$cid" ]]; then
     echo "missing"
     return
   fi
-  docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid" 2>/dev/null || echo "unknown"
+  docker_inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid" 2>/dev/null || echo "unknown"
 }
 
 wait_for_services() {
@@ -168,8 +203,8 @@ wait_for_services() {
   done
 
   warn "Tempo limite excedido aguardando healthcheck."
-  docker compose -f "$COMPOSE_FILE" ps || true
-  docker compose -f "$COMPOSE_FILE" logs --tail=80 rocketchat caddy mongo || true
+  docker_compose ps || true
+  docker_compose logs --tail=80 rocketchat caddy mongo || true
   return 1
 }
 
@@ -195,7 +230,7 @@ ensure_replica_set_ready() {
   local try
 
   for ((try=1; try<=max_tries; try++)); do
-    if docker compose -f "$COMPOSE_FILE" exec -T mongo sh -lc '
+    if docker_compose exec -T mongo sh -lc '
       if command -v mongosh >/dev/null 2>&1; then
         SHELL_CMD="mongosh"
       else
@@ -223,21 +258,21 @@ ensure_replica_set_ready() {
   done
 
   warn "Nao foi possivel confirmar replica set rs0."
-  docker compose -f "$COMPOSE_FILE" logs --tail=80 mongo || true
+  docker_compose logs --tail=80 mongo || true
   return 1
 }
 
 start_stack() {
   info "Subindo stack..."
-  docker compose -f "$COMPOSE_FILE" up -d --build mongo nodeapp
+  docker_compose up -d --build mongo nodeapp
   wait_for_mongo_healthy
   ensure_replica_set_ready
-  docker compose -f "$COMPOSE_FILE" up -d --build rocketchat caddy
+  docker_compose up -d --build rocketchat caddy
 }
 
 recover_from_mongo_unhealthy() {
   warn "Aplicando recuperacao automatica (docker compose down -v) e nova tentativa..."
-  docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
+  docker_compose down -v --remove-orphans || true
   ensure_keyfile_exists
   ensure_keyfile_permissions
   start_stack
@@ -247,14 +282,14 @@ recover_from_mongo_unhealthy() {
 recover_with_legacy_rocketchat() {
   warn "Aplicando fallback de compatibilidade do Rocket.Chat para Mongo 4.4..."
   upsert_env_var "ROCKETCHAT_IMAGE" "rocketchat/rocket.chat:4.8.7"
-  docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
+  docker_compose down -v --remove-orphans || true
   start_stack
   wait_for_services
 }
 
 main() {
-  require_cmd docker
-  docker compose version >/dev/null 2>&1 || error "Docker Compose nao disponivel."
+  setup_docker_access
+  docker_compose version >/dev/null 2>&1 || error "Docker Compose nao disponivel."
   [[ -f "$COMPOSE_FILE" ]] || error "Arquivo nao encontrado: $COMPOSE_FILE"
 
   ensure_env_file
@@ -266,28 +301,28 @@ main() {
   if ! start_stack; then
     warn "Falha ao subir stack na primeira tentativa."
     recover_from_mongo_unhealthy || {
-      docker compose -f "$COMPOSE_FILE" ps || true
-      docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
+      docker_compose ps || true
+      docker_compose logs --tail=120 mongo rocketchat caddy || true
       error "Falha ao subir stack."
     }
   elif ! wait_for_services; then
     if ! recover_from_mongo_unhealthy; then
-      if docker compose -f "$COMPOSE_FILE" logs --tail=200 rocketchat 2>/dev/null | grep -Eqi 'mongo.*(version|5\.0|6\.0|unsupported|minim)'; then
+      if docker_compose logs --tail=200 rocketchat 2>/dev/null | grep -Eqi 'mongo.*(version|5\.0|6\.0|unsupported|minim)'; then
         recover_with_legacy_rocketchat || {
-          docker compose -f "$COMPOSE_FILE" ps || true
-          docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
+          docker_compose ps || true
+          docker_compose logs --tail=120 mongo rocketchat caddy || true
           error "Falha ao aguardar servicos ficarem saudaveis."
         }
       else
-        docker compose -f "$COMPOSE_FILE" ps || true
-        docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
+        docker_compose ps || true
+        docker_compose logs --tail=120 mongo rocketchat caddy || true
         error "Falha ao aguardar servicos ficarem saudaveis."
       fi
     fi
   fi
 
   info "Status final:"
-  docker compose -f "$COMPOSE_FILE" ps
+  docker_compose ps
 
   cat <<EOF
 
