@@ -121,7 +121,26 @@ wait_for_services() {
   warn "Tempo limite excedido aguardando healthcheck."
   docker compose -f "$COMPOSE_FILE" ps || true
   docker compose -f "$COMPOSE_FILE" logs --tail=80 rocketchat caddy mongo || true
-  error "Falha ao aguardar servicos ficarem saudaveis."
+  return 1
+}
+
+start_stack() {
+  info "Subindo stack..."
+  docker compose -f "$COMPOSE_FILE" up -d --build
+}
+
+recover_from_mongo_unhealthy() {
+  local mongo_state
+  mongo_state="$(container_health mongo)"
+
+  if [[ "$mongo_state" != "unhealthy" ]]; then
+    return 1
+  fi
+
+  warn "Mongo ficou unhealthy. Aplicando recuperacao automatica (docker compose down -v) e nova tentativa..."
+  docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
+  start_stack
+  wait_for_services
 }
 
 main() {
@@ -134,10 +153,12 @@ main() {
   ensure_keyfile_permissions
   ensure_hosts_mapping
 
-  info "Subindo stack..."
-  docker compose -f "$COMPOSE_FILE" up -d --build
-
-  wait_for_services
+  if ! start_stack; then
+    warn "Falha ao subir stack na primeira tentativa."
+    recover_from_mongo_unhealthy || error "Falha ao subir stack."
+  elif ! wait_for_services; then
+    recover_from_mongo_unhealthy || error "Falha ao aguardar servicos ficarem saudaveis."
+  fi
 
   info "Status final:"
   docker compose -f "$COMPOSE_FILE" ps

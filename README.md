@@ -101,7 +101,8 @@ PORT=3000
 > 2. ✅ Adiciona a entrada `127.0.0.1 rocket.chat` no `/etc/hosts` (se ainda não existir)
 > 3. ✅ Sobe todos os containers com `docker compose up -d --build`
 > 4. ✅ Aguarda todos os serviços ficarem `healthy`
-> 5. ✅ Exibe o status final e as URLs de acesso
+> 5. ✅ Se o `mongo` ficar `unhealthy`, tenta recuperacao automatica com `down -v` e sobe novamente
+> 6. ✅ Exibe o status final e as URLs de acesso
 
 **Opção B — via comandos manuais:**
 

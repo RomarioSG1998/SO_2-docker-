@@ -66,6 +66,10 @@
   - Ajuste do healthcheck do `mongo` no `compose.yml` para autenticar com:
     - `MONGO_INITDB_ROOT_USERNAME`
     - `MONGO_INITDB_ROOT_PASSWORD`
+  - Fallback no healthcheck para cenario com volume antigo (tentativa sem autenticacao).
+  - `ativar_servidores.sh` agora tenta recuperacao automatica quando detecta `mongo` unhealthy:
+    - executa `docker compose down -v --remove-orphans`
+    - sobe a stack novamente
   - Com isso, o status `healthy` reflete o estado real do banco.
 
 ## Validacao final
