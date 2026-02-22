@@ -24,6 +24,17 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || error "Comando obrigatorio nao encontrado: $1"
 }
 
+upsert_env_var() {
+  local key="$1"
+  local value="$2"
+
+  if grep -Eq "^${key}=" "$ENV_FILE"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+  else
+    printf "\n%s=%s\n" "$key" "$value" >> "$ENV_FILE"
+  fi
+}
+
 ensure_env_file() {
   if [[ -f "$ENV_FILE" ]]; then
     info "Arquivo .env encontrado."
@@ -45,6 +56,18 @@ ROOT_URL=http://rocket.chat
 PORT=3000
 EOF
   info ".env padrao criado com sucesso."
+}
+
+configure_mongo_image_for_cpu() {
+  local cpuinfo_file="/proc/cpuinfo"
+  [[ -r "$cpuinfo_file" ]] || return 0
+
+  if grep -Eqi '(^|\s)avx(\s|$)' "$cpuinfo_file"; then
+    return 0
+  fi
+
+  warn "CPU sem suporte AVX detectada. Ajustando Mongo para imagem compativel (mongo:4.4.29)."
+  upsert_env_var "MONGO_IMAGE" "mongo:4.4.29"
 }
 
 ensure_keyfile_exists() {
@@ -165,6 +188,7 @@ main() {
   [[ -f "$COMPOSE_FILE" ]] || error "Arquivo nao encontrado: $COMPOSE_FILE"
 
   ensure_env_file
+  configure_mongo_image_for_cpu
   ensure_keyfile_exists
   ensure_keyfile_permissions
   ensure_hosts_mapping

@@ -1,6 +1,6 @@
 services:
   mongo:
-    image: mongo:7
+    image: ${MONGO_IMAGE:-mongo:7}
     restart: always
     command: [ "mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile" ]
     environment:
@@ -10,7 +10,7 @@ services:
       - mongo_data:/data/db
       - ./mongo-keyfile:/etc/mongo-keyfile:ro
     healthcheck:
-      test: [ "CMD-SHELL", "(mongosh --quiet -u \"$${MONGO_INITDB_ROOT_USERNAME}\" -p \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" || mongosh --quiet --eval \"db.adminCommand('ping').ok\") | grep 1" ]
+      test: [ "CMD-SHELL", "(mongosh --quiet -u \"$${MONGO_INITDB_ROOT_USERNAME}\" -p \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" || mongo admin --quiet -u \"$${MONGO_INITDB_ROOT_USERNAME}\" -p \"$${MONGO_INITDB_ROOT_PASSWORD}\" --eval \"db.adminCommand('ping').ok\" || mongosh --quiet --eval \"db.adminCommand('ping').ok\" || mongo --quiet --eval \"db.adminCommand('ping').ok\") | grep 1" ]
       interval: 10s
       timeout: 5s
       retries: 12

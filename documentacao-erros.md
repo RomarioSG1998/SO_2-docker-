@@ -82,6 +82,19 @@
   - `ativar_servidores.sh` agora detecta automaticamente quando `mongo-keyfile` e diretorio.
   - O script remove o diretorio (com `sudo` quando necessario), recria o arquivo e reaplica permissao `400`.
 
+## Erro 7 - Mongo falha com `Illegal instruction` em CPU sem AVX
+- Sintoma:
+  - Container `mongo` entra em restart loop com mensagem:
+    - `MongoDB 5.0+ requires a CPU with AVX support`
+    - `Illegal instruction (core dumped)`
+- Causa:
+  - A imagem `mongo:7` exige AVX e nao roda em CPUs antigas sem essa instrucao.
+- Solucao aplicada:
+  - O `compose.yml` passou a aceitar `MONGO_IMAGE` por variavel de ambiente.
+  - O `ativar_servidores.sh` detecta CPU sem AVX e ajusta automaticamente:
+    - `MONGO_IMAGE=mongo:4.4.29`
+  - Healthcheck do Mongo ficou compativel com `mongosh` (Mongo 7) e `mongo` (Mongo 4.4).
+
 ## Validacao final
 - `GET /api/info` -> `200` (Rocket.Chat)
 - `GET /api/v1/settings.public` -> `200` (Rocket.Chat)
