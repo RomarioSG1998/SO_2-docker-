@@ -103,8 +103,8 @@ PORT=3000
 > 1. ✅ Corrige a permissão do `mongo-keyfile` para `400` — sem precisar rodar `chmod` manualmente
 > 2. ✅ Adiciona a entrada `127.0.0.1 rocket.chat` no `/etc/hosts` (se ainda não existir)
 > 3. ✅ Sobe `mongo` e `nodeapp`, aguarda o Mongo ficar saudável e inicializa o replica set `rs0`
-> 4. ✅ Sobe `rocketchat` e `caddy`
-> 5. ✅ Aguarda todos os serviços ficarem `healthy`
+> 4. ✅ Sobe `rocketchat` primeiro e aguarda health
+> 5. ✅ Sobe `caddy` por ultimo (evita falha por dependencia prematura)
 > 6. ✅ Se o `mongo` ficar `unhealthy`, tenta recuperacao automatica com `down -v` e sobe novamente
 > 7. ✅ Exibe o status final e as URLs de acesso
 

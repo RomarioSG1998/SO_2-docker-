@@ -267,7 +267,12 @@ start_stack() {
   docker_compose up -d --build mongo nodeapp
   wait_for_mongo_healthy
   ensure_replica_set_ready
-  docker_compose up -d --build rocketchat caddy
+  docker_compose up -d --build rocketchat
+}
+
+ensure_caddy_running() {
+  info "Subindo caddy..."
+  docker_compose up -d caddy
 }
 
 recover_from_mongo_unhealthy() {
@@ -320,6 +325,8 @@ main() {
       fi
     fi
   fi
+
+  ensure_caddy_running
 
   info "Status final:"
   docker_compose ps
