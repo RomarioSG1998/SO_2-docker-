@@ -93,8 +93,17 @@
   - O `compose.yml` passou a aceitar `MONGO_IMAGE` e `ROCKETCHAT_IMAGE` por variaveis de ambiente.
   - O `ativar_servidores.sh` detecta CPU sem AVX e ajusta automaticamente:
     - `MONGO_IMAGE=mongo:4.4.29`
-    - `ROCKETCHAT_IMAGE=rocketchat/rocket.chat:5.4.3`
+    - `ROCKETCHAT_IMAGE=rocketchat/rocket.chat:4.8.7`
   - Healthcheck do Mongo ficou compativel com `mongosh` (Mongo 7) e `mongo` (Mongo 4.4).
+
+## Erro 8 - Rocket.Chat `unhealthy` em stack legada (Mongo 4.4)
+- Sintoma:
+  - `mongo` fica `healthy`, mas `rocketchat` nao sobe e entra em `unhealthy`.
+- Causa:
+  - Versao do Rocket.Chat nao compativel com a versao efetiva do Mongo em ambiente legado.
+- Solucao aplicada:
+  - Ajuste do modo legado para `rocketchat/rocket.chat:4.8.7`.
+  - Fallback automatico no script: ao detectar erro de compatibilidade de Mongo nos logs do Rocket.Chat, aplica versao legada e sobe novamente.
 
 ## Validacao final
 - `GET /api/info` -> `200` (Rocket.Chat)

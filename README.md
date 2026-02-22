@@ -88,7 +88,8 @@ PORT=3000
 > Se o `.env` nao existir, o `./ativar_servidores.sh` cria automaticamente (usando `.env.example` quando disponivel).
 > O `compose.yml` tambem possui valores padrao para variaveis criticas, evitando falha em ambiente novo.
 > Em CPU sem AVX, o script ajusta automaticamente para um par compativel:
-> `MONGO_IMAGE=mongo:4.4.29` e `ROCKETCHAT_IMAGE=rocketchat/rocket.chat:5.4.3`.
+> `MONGO_IMAGE=mongo:4.4.29` e `ROCKETCHAT_IMAGE=rocketchat/rocket.chat:4.8.7`.
+> Se o Rocket.Chat continuar `unhealthy`, o script aplica fallback extra para a versao legada automaticamente.
 
 ### 3. Subir a stack
 

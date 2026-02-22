@@ -68,7 +68,7 @@ configure_compatibility_for_cpu() {
 
   warn "CPU sem suporte AVX detectada. Ajustando stack para imagens compativeis."
   upsert_env_var "MONGO_IMAGE" "mongo:4.4.29"
-  upsert_env_var "ROCKETCHAT_IMAGE" "rocketchat/rocket.chat:5.4.3"
+  upsert_env_var "ROCKETCHAT_IMAGE" "rocketchat/rocket.chat:4.8.7"
 }
 
 ensure_keyfile_exists() {
@@ -183,6 +183,14 @@ recover_from_mongo_unhealthy() {
   wait_for_services
 }
 
+recover_with_legacy_rocketchat() {
+  warn "Aplicando fallback de compatibilidade do Rocket.Chat para Mongo 4.4..."
+  upsert_env_var "ROCKETCHAT_IMAGE" "rocketchat/rocket.chat:4.8.7"
+  docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
+  start_stack
+  wait_for_services
+}
+
 main() {
   require_cmd docker
   docker compose version >/dev/null 2>&1 || error "Docker Compose nao disponivel."
@@ -202,11 +210,19 @@ main() {
       error "Falha ao subir stack."
     }
   elif ! wait_for_services; then
-    recover_from_mongo_unhealthy || {
-      docker compose -f "$COMPOSE_FILE" ps || true
-      docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
-      error "Falha ao aguardar servicos ficarem saudaveis."
-    }
+    if ! recover_from_mongo_unhealthy; then
+      if docker compose -f "$COMPOSE_FILE" logs --tail=200 rocketchat 2>/dev/null | grep -Eqi 'mongo.*(version|5\.0|6\.0|unsupported|minim)'; then
+        recover_with_legacy_rocketchat || {
+          docker compose -f "$COMPOSE_FILE" ps || true
+          docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
+          error "Falha ao aguardar servicos ficarem saudaveis."
+        }
+      else
+        docker compose -f "$COMPOSE_FILE" ps || true
+        docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
+        error "Falha ao aguardar servicos ficarem saudaveis."
+      fi
+    fi
   fi
 
   info "Status final:"
