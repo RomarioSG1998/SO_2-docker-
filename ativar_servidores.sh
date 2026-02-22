@@ -50,6 +50,15 @@ EOF
 ensure_keyfile_exists() {
   local keyfile="$PROJECT_DIR/mongo-keyfile"
 
+  if [[ -d "$keyfile" ]]; then
+    warn "Encontrado diretorio em '$keyfile' (era esperado arquivo). Tentando corrigir automaticamente..."
+    if command -v sudo >/dev/null 2>&1; then
+      sudo rm -rf "$keyfile" || error "Falha ao remover diretorio '$keyfile'."
+    else
+      rm -rf "$keyfile" || error "Falha ao remover diretorio '$keyfile'."
+    fi
+  fi
+
   if [[ ! -f "$keyfile" ]]; then
     info "mongo-keyfile nao encontrado. Gerando automaticamente com openssl..."
     command -v openssl >/dev/null 2>&1 || error "openssl nao encontrado. Instale openssl e tente novamente."
@@ -68,9 +77,21 @@ ensure_keyfile_permissions() {
 
   if [[ "$perms" != "400" ]]; then
     info "Corrigindo permissao do mongo-keyfile: $perms -> 400"
-    chmod 400 "$keyfile" || error "Falha ao aplicar chmod 400 em $keyfile. Tente: sudo chmod 400 mongo-keyfile"
+    if ! chmod 400 "$keyfile" 2>/dev/null; then
+      if command -v sudo >/dev/null 2>&1; then
+        sudo chmod 400 "$keyfile" || error "Falha ao aplicar chmod 400 em $keyfile."
+      else
+        error "Falha ao aplicar chmod 400 em $keyfile."
+      fi
+    fi
   else
     info "Permissao do mongo-keyfile OK (400)."
+  fi
+
+  if [[ ! -w "$keyfile" ]]; then
+    if command -v sudo >/dev/null 2>&1; then
+      sudo chown "$(id -u)":"$(id -g)" "$keyfile" >/dev/null 2>&1 || true
+    fi
   fi
 }
 

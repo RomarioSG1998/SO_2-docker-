@@ -72,6 +72,16 @@
     - sobe a stack novamente
   - Com isso, o status `healthy` reflete o estado real do banco.
 
+## Erro 6 - `mongo-keyfile` vira pasta e fica sem permissao para apagar
+- Sintoma:
+  - O caminho `mongo-keyfile` aparece como diretorio.
+  - Nao e possivel apagar/alterar sem `sudo`.
+- Causa:
+  - Em alguns cenarios de bind mount, quando o arquivo nao existe, o Docker pode criar o caminho como pasta (root).
+- Solucao aplicada:
+  - `ativar_servidores.sh` agora detecta automaticamente quando `mongo-keyfile` e diretorio.
+  - O script remove o diretorio (com `sudo` quando necessario), recria o arquivo e reaplica permissao `400`.
+
 ## Validacao final
 - `GET /api/info` -> `200` (Rocket.Chat)
 - `GET /api/v1/settings.public` -> `200` (Rocket.Chat)
