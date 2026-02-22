@@ -1,0 +1,23 @@
+{
+    auto_https off
+}
+
+http://localhost {
+    redir http://rocket.chat{uri} 308
+}
+
+http://rocket.chat {
+    # Keep nodeapp on /api (exact path only) without intercepting
+    # Rocket.Chat APIs under /api/*.
+    @node_api_root path /api
+    handle @node_api_root {
+        uri strip_prefix /api
+        reverse_proxy nodeapp:4000
+    }
+
+    handle {
+        reverse_proxy rocketchat:3000 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+}

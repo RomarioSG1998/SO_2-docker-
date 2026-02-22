@@ -1,0 +1,8 @@
+# Dependências Node
+nodeapp/node_modules/
+
+# Variáveis de ambiente (contém credenciais)
+.env
+
+# Keyfile do MongoDB (segurança)
+mongo-keyfile

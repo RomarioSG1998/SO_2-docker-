@@ -1,0 +1,42 @@
+services:
+  mongo:
+    image: mongo:6
+    restart: always
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    env_file:
+      - .env
+    volumes:
+      - mongo_data:/data/db
+
+  rocketchat:
+    image: rocketchat/rocket.chat:latest
+    restart: always
+    depends_on:
+      - mongo
+    env_file:
+      - .env
+    environment:
+      MONGO_URL: mongodb://admin:123456@mongo:27017/rocketchat?authSource=admin
+      MONGO_OPLOG_URL: mongodb://admin:123456@mongo:27017/local?authSource=admin
+    expose:
+      - "3000"
+
+  nodeapp:
+    build: ./nodeapp
+    restart: always
+    expose:
+      - "4000"
+
+  caddy:
+    image: caddy:latest
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - rocketchat
+      - nodeapp
+
+volumes:
+  mongo_data:
