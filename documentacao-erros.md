@@ -56,6 +56,18 @@
 - Resultado:
   - O projeto sobe de forma natural em maquina nova, sem erro por ausencia de `.env`.
 
+## Erro 5 - Mongo inicia, mas fica `unhealthy` e bloqueia dependencias
+- Sintoma:
+  - `dependency failed to start: container ...-mongo-1 is unhealthy`
+  - Servicos dependentes (`rocketchat`) nao iniciam.
+- Causa:
+  - Com autenticacao habilitada no Mongo, o healthcheck sem usuario/senha falhava.
+- Solucao aplicada:
+  - Ajuste do healthcheck do `mongo` no `compose.yml` para autenticar com:
+    - `MONGO_INITDB_ROOT_USERNAME`
+    - `MONGO_INITDB_ROOT_PASSWORD`
+  - Com isso, o status `healthy` reflete o estado real do banco.
+
 ## Validacao final
 - `GET /api/info` -> `200` (Rocket.Chat)
 - `GET /api/v1/settings.public` -> `200` (Rocket.Chat)
