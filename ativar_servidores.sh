@@ -112,7 +112,7 @@ ensure_hosts_mapping() {
 container_health() {
   local service="$1"
   local cid
-  cid="$(docker compose -f "$COMPOSE_FILE" ps -q "$service")"
+  cid="$(docker compose -f "$COMPOSE_FILE" ps -q "$service" 2>/dev/null || true)"
   if [[ -z "$cid" ]]; then
     echo "missing"
     return
@@ -151,15 +151,10 @@ start_stack() {
 }
 
 recover_from_mongo_unhealthy() {
-  local mongo_state
-  mongo_state="$(container_health mongo)"
-
-  if [[ "$mongo_state" != "unhealthy" ]]; then
-    return 1
-  fi
-
-  warn "Mongo ficou unhealthy. Aplicando recuperacao automatica (docker compose down -v) e nova tentativa..."
+  warn "Aplicando recuperacao automatica (docker compose down -v) e nova tentativa..."
   docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
+  ensure_keyfile_exists
+  ensure_keyfile_permissions
   start_stack
   wait_for_services
 }
@@ -176,9 +171,17 @@ main() {
 
   if ! start_stack; then
     warn "Falha ao subir stack na primeira tentativa."
-    recover_from_mongo_unhealthy || error "Falha ao subir stack."
+    recover_from_mongo_unhealthy || {
+      docker compose -f "$COMPOSE_FILE" ps || true
+      docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
+      error "Falha ao subir stack."
+    }
   elif ! wait_for_services; then
-    recover_from_mongo_unhealthy || error "Falha ao aguardar servicos ficarem saudaveis."
+    recover_from_mongo_unhealthy || {
+      docker compose -f "$COMPOSE_FILE" ps || true
+      docker compose -f "$COMPOSE_FILE" logs --tail=120 mongo rocketchat caddy || true
+      error "Falha ao aguardar servicos ficarem saudaveis."
+    }
   fi
 
   info "Status final:"
