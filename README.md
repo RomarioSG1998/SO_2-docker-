@@ -102,10 +102,11 @@ PORT=3000
 > O script realiza automaticamente, em ordem:
 > 1. ✅ Corrige a permissão do `mongo-keyfile` para `400` — sem precisar rodar `chmod` manualmente
 > 2. ✅ Adiciona a entrada `127.0.0.1 rocket.chat` no `/etc/hosts` (se ainda não existir)
-> 3. ✅ Sobe todos os containers com `docker compose up -d --build`
-> 4. ✅ Aguarda todos os serviços ficarem `healthy`
-> 5. ✅ Se o `mongo` ficar `unhealthy`, tenta recuperacao automatica com `down -v` e sobe novamente
-> 6. ✅ Exibe o status final e as URLs de acesso
+> 3. ✅ Sobe `mongo` e `nodeapp`, aguarda o Mongo ficar saudável e inicializa o replica set `rs0`
+> 4. ✅ Sobe `rocketchat` e `caddy`
+> 5. ✅ Aguarda todos os serviços ficarem `healthy`
+> 6. ✅ Se o `mongo` ficar `unhealthy`, tenta recuperacao automatica com `down -v` e sobe novamente
+> 7. ✅ Exibe o status final e as URLs de acesso
 
 **Opção B — via comandos manuais:**
 

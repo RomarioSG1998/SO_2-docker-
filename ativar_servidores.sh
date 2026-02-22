@@ -112,10 +112,14 @@ ensure_keyfile_permissions() {
     info "Permissao do mongo-keyfile OK (400)."
   fi
 
-  if [[ ! -w "$keyfile" ]]; then
-    if command -v sudo >/dev/null 2>&1; then
-      sudo chown "$(id -u)":"$(id -g)" "$keyfile" >/dev/null 2>&1 || true
+  # Mongo em container costuma executar com UID/GID 999 e precisa ler o keyfile.
+  if command -v sudo >/dev/null 2>&1; then
+    if ! sudo chown 999:999 "$keyfile" 2>/dev/null; then
+      warn "Nao foi possivel ajustar owner do mongo-keyfile para 999:999. Tentando manter configuracao atual."
     fi
+    sudo chmod 400 "$keyfile" 2>/dev/null || true
+  else
+    chown 999:999 "$keyfile" 2>/dev/null || true
   fi
 }
 
@@ -169,9 +173,66 @@ wait_for_services() {
   return 1
 }
 
+wait_for_mongo_healthy() {
+  local max_tries=30
+  local sleep_seconds=3
+  local try mongo_state
+
+  for ((try=1; try<=max_tries; try++)); do
+    mongo_state="$(container_health mongo)"
+    info "Aguardando mongo (${try}/${max_tries}) -> ${mongo_state}"
+    if [[ "$mongo_state" == "healthy" ]]; then
+      return 0
+    fi
+    sleep "$sleep_seconds"
+  done
+  return 1
+}
+
+ensure_replica_set_ready() {
+  local max_tries=30
+  local sleep_seconds=3
+  local try
+
+  for ((try=1; try<=max_tries; try++)); do
+    if docker compose -f "$COMPOSE_FILE" exec -T mongo sh -lc '
+      if command -v mongosh >/dev/null 2>&1; then
+        SHELL_CMD="mongosh"
+      else
+        SHELL_CMD="mongo"
+      fi
+
+      $SHELL_CMD --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "
+        try {
+          const s = rs.status();
+          if (s.ok === 1) { print(\"RS_OK\"); }
+        } catch (e) {
+          const r = rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo:27017\"}]});
+          printjson(r);
+        }
+      " >/tmp/rs_init_out.txt 2>/tmp/rs_init_err.txt
+
+      $SHELL_CMD --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "rs.status().ok" | grep -q 1
+    ' >/dev/null 2>&1; then
+      info "Replica set rs0 pronto."
+      return 0
+    fi
+
+    info "Aguardando inicializacao do replica set (${try}/${max_tries})..."
+    sleep "$sleep_seconds"
+  done
+
+  warn "Nao foi possivel confirmar replica set rs0."
+  docker compose -f "$COMPOSE_FILE" logs --tail=80 mongo || true
+  return 1
+}
+
 start_stack() {
   info "Subindo stack..."
-  docker compose -f "$COMPOSE_FILE" up -d --build
+  docker compose -f "$COMPOSE_FILE" up -d --build mongo nodeapp
+  wait_for_mongo_healthy
+  ensure_replica_set_ready
+  docker compose -f "$COMPOSE_FILE" up -d --build rocketchat caddy
 }
 
 recover_from_mongo_unhealthy() {

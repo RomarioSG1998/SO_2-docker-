@@ -81,6 +81,7 @@
 - Solucao aplicada:
   - `ativar_servidores.sh` agora detecta automaticamente quando `mongo-keyfile` e diretorio.
   - O script remove o diretorio (com `sudo` quando necessario), recria o arquivo e reaplica permissao `400`.
+  - O script tambem tenta ajustar owner para `999:999`, compativel com o usuario interno do Mongo no container.
 
 ## Erro 7 - Mongo falha com `Illegal instruction` em CPU sem AVX
 - Sintoma:
@@ -104,6 +105,18 @@
 - Solucao aplicada:
   - Ajuste do modo legado para `rocketchat/rocket.chat:4.8.7`.
   - Fallback automatico no script: ao detectar erro de compatibilidade de Mongo nos logs do Rocket.Chat, aplica versao legada e sobe novamente.
+
+## Erro 9 - Rocket.Chat nao conecta no Mongo (`RSGhost`)
+- Sintoma:
+  - `rocketchat` fica `unhealthy` com erro:
+    - `MongoServerSelectionError: Server selection timed out`
+    - Topologia mostrando `type: 'RSGhost'`.
+- Causa:
+  - Replica set `rs0` ainda nao estava inicializado quando Rocket.Chat tentava conectar.
+- Solucao aplicada:
+  - `ativar_servidores.sh` passou a subir primeiro `mongo` e `nodeapp`.
+  - O script aguarda o Mongo ficar healthy, inicializa/valida o replica set `rs0` e so depois sobe `rocketchat` e `caddy`.
+  - `MONGO_URL` e `MONGO_OPLOG_URL` agora incluem `replicaSet=rs0`.
 
 ## Validacao final
 - `GET /api/info` -> `200` (Rocket.Chat)
