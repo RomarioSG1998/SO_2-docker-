@@ -22,6 +22,17 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || error "Comando obrigatorio nao encontrado: $1"
 }
 
+ensure_keyfile_exists() {
+  local keyfile="$PROJECT_DIR/mongo-keyfile"
+
+  if [[ ! -f "$keyfile" ]]; then
+    info "mongo-keyfile nao encontrado. Gerando automaticamente com openssl..."
+    command -v openssl >/dev/null 2>&1 || error "openssl nao encontrado. Instale openssl e tente novamente."
+    openssl rand -base64 756 > "$keyfile"
+    info "mongo-keyfile gerado com sucesso."
+  fi
+}
+
 ensure_keyfile_permissions() {
   local keyfile="$PROJECT_DIR/mongo-keyfile"
 
@@ -93,6 +104,7 @@ main() {
   docker compose version >/dev/null 2>&1 || error "Docker Compose nao disponivel."
   [[ -f "$COMPOSE_FILE" ]] || error "Arquivo nao encontrado: $COMPOSE_FILE"
 
+  ensure_keyfile_exists
   ensure_keyfile_permissions
   ensure_hosts_mapping
 

@@ -72,11 +72,15 @@ cd drive-download-20260222T101945Z-1-001
 
 ### 2. Configurar variáveis de ambiente
 
-Edite o arquivo `.env` conforme necessário:
+Copie o arquivo de exemplo e edite com suas credenciais:
+
+```bash
+cp .env.example .env
+```
 
 ```env
 MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=123456   # ⚠️ Altere em produção
+MONGO_INITDB_ROOT_PASSWORD=sua_senha_aqui   # ⚠️ Altere antes de subir
 ROOT_URL=http://rocket.chat
 PORT=3000
 ```
