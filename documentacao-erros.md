@@ -35,6 +35,27 @@
     - `/api/*` -> Rocket.Chat
   - Mantido Rocket.Chat como destino padrao para o restante das rotas.
 
+## Erro 4 - Projeto nao sobe em maquina nova por falta do `.env`
+- Sintoma:
+  - Ao executar `bash ativar_servidores.sh`, o Docker Compose falhava com:
+    - `env file .../.env not found`
+  - Tambem apareciam avisos de variaveis nao definidas:
+    - `MONGO_INITDB_ROOT_USERNAME`
+    - `MONGO_INITDB_ROOT_PASSWORD`
+- Causa:
+  - O `compose.yml` dependia de `.env` obrigatorio em ambientes recem-clonados.
+- Solucao aplicada:
+  - `ativar_servidores.sh` agora cria `.env` automaticamente:
+    - Primeiro tenta copiar de `.env.example`.
+    - Se `.env.example` nao existir, gera `.env` padrao.
+  - `compose.yml` passou a usar defaults para variaveis essenciais:
+    - `MONGO_INITDB_ROOT_USERNAME` (`admin`)
+    - `MONGO_INITDB_ROOT_PASSWORD` (`123456`)
+    - `ROOT_URL` (`http://rocket.chat`)
+    - `PORT` (`3000`)
+- Resultado:
+  - O projeto sobe de forma natural em maquina nova, sem erro por ausencia de `.env`.
+
 ## Validacao final
 - `GET /api/info` -> `200` (Rocket.Chat)
 - `GET /api/v1/settings.public` -> `200` (Rocket.Chat)

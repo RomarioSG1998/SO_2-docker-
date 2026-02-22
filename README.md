@@ -85,6 +85,9 @@ ROOT_URL=http://rocket.chat
 PORT=3000
 ```
 
+> Se o `.env` nao existir, o `./ativar_servidores.sh` cria automaticamente (usando `.env.example` quando disponivel).
+> O `compose.yml` tambem possui valores padrao para variaveis criticas, evitando falha em ambiente novo.
+
 ### 3. Subir a stack
 
 **Opção A — via script (recomendado):**
@@ -135,6 +138,20 @@ docker compose down -v          # Para e apaga os dados
 |---------|-----|
 | Rocket.Chat | http://rocket.chat |
 | API Node.js | http://rocket.chat/api |
+
+### 6. Primeira execucao em outra maquina (sem ajuste manual)
+
+Se voce apenas clonou/baixou o projeto em um ambiente novo, basta executar:
+
+```bash
+./ativar_servidores.sh
+```
+
+O script ja cobre os pontos que mais quebram em primeira execucao:
+- Cria `.env` automaticamente quando ele nao existe.
+- Reaplica permissao `400` no `mongo-keyfile`.
+- Garante `127.0.0.1 rocket.chat` no `/etc/hosts`.
+- Sobe os servicos e aguarda todos ficarem `healthy`.
 
 ---
 

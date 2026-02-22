@@ -3,6 +3,8 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$PROJECT_DIR/compose.yml"
+ENV_FILE="$PROJECT_DIR/.env"
+ENV_EXAMPLE_FILE="$PROJECT_DIR/.env.example"
 DOMAIN="rocket.chat"
 
 info() {
@@ -20,6 +22,29 @@ error() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || error "Comando obrigatorio nao encontrado: $1"
+}
+
+ensure_env_file() {
+  if [[ -f "$ENV_FILE" ]]; then
+    info "Arquivo .env encontrado."
+    return
+  fi
+
+  if [[ -f "$ENV_EXAMPLE_FILE" ]]; then
+    info ".env nao encontrado. Criando automaticamente a partir de .env.example..."
+    cp "$ENV_EXAMPLE_FILE" "$ENV_FILE"
+    info ".env criado com sucesso."
+    return
+  fi
+
+  info ".env e .env.example nao encontrados. Gerando .env padrao..."
+  cat > "$ENV_FILE" <<'EOF'
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=123456
+ROOT_URL=http://rocket.chat
+PORT=3000
+EOF
+  info ".env padrao criado com sucesso."
 }
 
 ensure_keyfile_exists() {
@@ -104,6 +129,7 @@ main() {
   docker compose version >/dev/null 2>&1 || error "Docker Compose nao disponivel."
   [[ -f "$COMPOSE_FILE" ]] || error "Arquivo nao encontrado: $COMPOSE_FILE"
 
+  ensure_env_file
   ensure_keyfile_exists
   ensure_keyfile_permissions
   ensure_hosts_mapping

@@ -3,8 +3,9 @@ services:
     image: mongo:7
     restart: always
     command: [ "mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile" ]
-    env_file:
-      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-123456}
     volumes:
       - mongo_data:/data/db
       - ./mongo-keyfile:/etc/mongo-keyfile:ro
@@ -20,12 +21,12 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    env_file:
-      - .env
     environment:
-      MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/rocketchat?authSource=admin
-      MONGO_OPLOG_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/local?authSource=admin
-      OVERWRITE_SETTING_Site_Url: http://rocket.chat
+      ROOT_URL: ${ROOT_URL:-http://rocket.chat}
+      PORT: ${PORT:-3000}
+      MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-123456}@mongo:27017/rocketchat?authSource=admin
+      MONGO_OPLOG_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-123456}@mongo:27017/local?authSource=admin
+      OVERWRITE_SETTING_Site_Url: ${ROOT_URL:-http://rocket.chat}
     expose:
       - "3000"
     healthcheck:
