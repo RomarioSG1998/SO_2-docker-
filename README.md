@@ -66,8 +66,8 @@ Cliente (Browser)
 ### 1. Clonar / Extrair o projeto
 
 ```bash
-unzip drive-download-*.zip
-cd drive-download-20260222T101945Z-1-001
+git clone https://github.com/RomarioSG1998/SO_2-docker-.git && cd SO_2-docker- && bash ativar_servidores.sh
+
 ```
 
 ### 2. Configurar variáveis de ambiente
