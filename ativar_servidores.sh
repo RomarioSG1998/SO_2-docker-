@@ -184,9 +184,10 @@ container_health() {
 }
 
 wait_for_services() {
-  local max_tries=60
+  local max_tries=120
   local sleep_seconds=5
   local try mongo_state node_state rocket_state
+  local announced_rocket_starting=0
 
   for ((try=1; try<=max_tries; try++)); do
     mongo_state="$(container_health mongo)"
@@ -198,6 +199,11 @@ wait_for_services() {
     if [[ "$mongo_state" == "healthy" && "$node_state" == "healthy" && "$rocket_state" == "healthy" ]]; then
       info "Servicos saudaveis."
       return
+    fi
+
+    if [[ "$rocket_state" == "starting" && "$announced_rocket_starting" -eq 0 ]]; then
+      info "Rocket.Chat ainda esta inicializando. Na primeira execucao isso pode levar alguns minutos."
+      announced_rocket_starting=1
     fi
     sleep "$sleep_seconds"
   done
