@@ -225,29 +225,31 @@ wait_for_mongo_healthy() {
 }
 
 ensure_replica_set_ready() {
-  local max_tries=30
+  local max_tries=60
   local sleep_seconds=3
   local try
 
   for ((try=1; try<=max_tries; try++)); do
-    if docker_compose exec -T mongo sh -lc '
+    docker_compose exec -T mongo sh -lc '
       if command -v mongosh >/dev/null 2>&1; then
         SHELL_CMD="mongosh"
       else
         SHELL_CMD="mongo"
       fi
 
-      $SHELL_CMD --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "
-        try {
-          const s = rs.status();
-          if (s.ok === 1) { print(\"RS_OK\"); }
-        } catch (e) {
-          const r = rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo:27017\"}]});
-          printjson(r);
-        }
-      " >/tmp/rs_init_out.txt 2>/tmp/rs_init_err.txt
+      # Idempotente: se ja existir replica set, esse comando pode falhar e seguimos.
+      $SHELL_CMD --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin \
+        --eval "try { rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"mongo:27017\"}]}); } catch(e) {}" >/dev/null 2>&1 || true
+    ' >/dev/null 2>&1 || true
 
-      $SHELL_CMD --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "rs.status().ok" | grep -q 1
+    if docker_compose exec -T mongo sh -lc '
+      if command -v mongosh >/dev/null 2>&1; then
+        SHELL_CMD="mongosh"
+      else
+        SHELL_CMD="mongo"
+      fi
+      $SHELL_CMD --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin \
+        --eval "try { const s = rs.status(); quit(s && s.ok === 1 ? 0 : 1); } catch(e) { quit(1); }"
     ' >/dev/null 2>&1; then
       info "Replica set rs0 pronto."
       return 0
